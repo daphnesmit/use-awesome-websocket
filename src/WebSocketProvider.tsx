@@ -2,11 +2,20 @@ import { FC, PropsWithChildren, useCallback, useMemo, useRef } from 'react';
 import { WebSocketContext } from './WebSocketContext';
 
 export interface WebSocketProviderProps {
+  /**
+   * If you want disconnect all sockets on unmount you can set it via the provider
+   * @default true
+   */
+  disconnectOnUnmount?: boolean;
+  /**
+   * If you want to set a default url for the websocket connection you can set it via the provider
+   */
   url?: string;
 }
 const WebSocketProvider: FC<PropsWithChildren<WebSocketProviderProps>> = ({
   children,
   url,
+  disconnectOnUnmount = true,
 }) => {
   const websockets = useRef<Record<string, WebSocket>>({});
 
@@ -50,7 +59,10 @@ const WebSocketProvider: FC<PropsWithChildren<WebSocketProviderProps>> = ({
     []
   );
 
-  const contextValue = useMemo(() => ({ connect, url }), [connect, url]);
+  const contextValue = useMemo(
+    () => ({ connect, url, disconnectOnUnmount }),
+    [connect, url, disconnectOnUnmount]
+  );
 
   return (
     <WebSocketContext.Provider value={contextValue}>

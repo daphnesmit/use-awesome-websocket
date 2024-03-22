@@ -8,14 +8,20 @@ export enum WEBSOCKET_READY_STATE {
   CLOSED = 3,
   UNINSTANTIATED = 4,
 }
-declare type WebSocketJSONType = Record<never, never>;
+declare type WebSocketJSONType = Record<never, never> | string;
 
 /** Event types */
-export declare type WebSocketOnOpenFunc = (data: any) => void;
-export declare type WebSocketOnCloseFunc = (data: any) => void;
-export declare type WebSocketOnErrorFunc = (data: any) => void;
+export declare type WebSocketOnOpenFunc = (
+  data: WebSocketEventMap['open']
+) => void;
+export declare type WebSocketOnCloseFunc = (
+  data: WebSocketEventMap['close']
+) => void;
+export declare type WebSocketOnErrorFunc = (
+  event: WebSocketEventMap['error']
+) => void;
 export declare type WebSocketOnMessageFunc<T extends WebSocketJSONType> = (
-  data: any,
+  data: WebSocketEventMap['message'],
   json: T
 ) => void;
 export declare type OnTabLeaveFunc = (
@@ -44,22 +50,68 @@ export interface UseWebSocketReturn<
   J extends WebSocketJSONType,
 > extends WebSocketState<T> {
   connect: () => WebSocket;
-  sendData: (name: string, data: J) => void;
+  /**
+   * Send data to the websocket server:
+   * - If the connection is open, send the data directly
+   * - If the connection is not open yet, add the data to the messages queue when shouldQueue is true and send the data when the connection is opened.
+   * - If the connection is closed, resend the data when the connection is reopened when shouldResendOnReconnect is true
+   */
+  sendData: (
+    data: J,
+    options?: { shouldQueue?: boolean; shouldResendOnReconnect?: boolean }
+  ) => void;
+
   websocket: WebSocket;
 }
 
 export interface UseWebSocketProps<T extends WebSocketJSONType>
   extends WebSocketEvents<T> {
+  /**
+   * Disconnect the websocket connection on unmount
+   * @default true
+   */
+  disconnectOnUnmount?: boolean;
+  /**
+   * The endpoint to connect to, comes after the url. eg: wss://example.com/endpoint
+   */
   endpoint?: string;
+  /**
+   * Maximum number of retries to connect
+   * @default 5
+   */
   maxRetries?: number;
+  /**
+   * Interval to reconnect in milliseconds
+   * @default 1000
+   */
   reconnectInterval?: number;
+  /**
+   * Determine if it should connect to the websocket server on mount
+   * @default true
+   */
   shouldConnect?: boolean;
+  /**
+   * Determine if it should reconnect on close events, such as server shutting down
+   * @default () => true
+   */
+  shouldReconnectOnClose?: (closeEvent: WebSocketEventMap['close']) => boolean;
+  /**
+   * Retry connecting on error
+   * @default false
+   */
+  shouldRetryOnError?: boolean;
+  /**
+   * URL to connect to
+   */
   url?: string;
 }
 
-const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
-  params?: UseWebSocketProps<T>
-) => UseWebSocketReturn<T, J> = <
+const useWebSocket: <
+  ReturnedMessageType extends WebSocketJSONType,
+  SendMessageType extends WebSocketJSONType,
+>(
+  params?: UseWebSocketProps<ReturnedMessageType>
+) => UseWebSocketReturn<ReturnedMessageType, SendMessageType> = <
   T extends WebSocketJSONType,
   J extends WebSocketJSONType,
 >(
@@ -71,6 +123,9 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
     shouldConnect = true,
     reconnectInterval = 1000,
     maxRetries = 5,
+    shouldRetryOnError = false,
+    shouldReconnectOnClose = () => true,
+    disconnectOnUnmount: propDisconnectOnUnmount = true,
     onClose,
     onError,
     onMessage,
@@ -79,18 +134,26 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
     onTabLeave,
   } = params || {};
 
-  const { connect: contextConnect, url: contextUrl } = useWebSocketContext();
+  const {
+    connect: contextConnect,
+    url: contextUrl,
+    disconnectOnUnmount: contextDisconnectOnUnmount,
+  } = useWebSocketContext();
 
   const websocket = useRef<WebSocket>();
-  const reconnect = useRef<boolean>(false);
+  const shouldReconnect = useRef<boolean>(false);
   const retryCount = useRef<number>(0);
   const reconnectTimer = useRef<number>(reconnectInterval);
+  const disconnectOnUnmount = useRef<boolean | undefined>(
+    propDisconnectOnUnmount || contextDisconnectOnUnmount
+  );
 
   const onCloseRef = useRef<WebSocket['onclose']>();
   const onMessageRef = useRef<WebSocket['onmessage']>();
   const onErrorRef = useRef<WebSocket['onerror']>();
   const onOpenRef = useRef<WebSocket['onopen']>();
-  const subscriptions = useRef<Map<string, any>>(new Map());
+  const subscriptions = useRef<string[]>([]);
+  const messageQueue = useRef<string[]>([]);
 
   const [webSocketState, setWebSocketState] = useState<WebSocketState<T>>({
     readyState: WEBSOCKET_READY_STATE.CLOSED,
@@ -112,7 +175,7 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
     newWebsocket.onerror = onErrorRef.current || null;
     newWebsocket.onmessage = onMessageRef.current || null;
 
-    reconnect.current = true;
+    shouldReconnect.current = true;
     websocket.current = newWebsocket;
 
     setWebSocketState((old) => ({
@@ -123,8 +186,8 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
     return newWebsocket;
   }, [propUrl, contextUrl, endpoint, contextConnect]);
 
-  const subscribe = useCallback((name: string, data: any) => {
-    subscriptions.current.set(name, data);
+  const subscribe = useCallback((data: J) => {
+    subscriptions.current.push(JSON.stringify(data));
   }, []);
 
   const resetRetryCount = useCallback(() => {
@@ -133,15 +196,24 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
 
   const sendSubscriptions = useCallback(() => {
     subscriptions.current.forEach((value) => {
-      websocket.current?.send(JSON.stringify(value));
+      websocket.current?.send(value);
+    });
+  }, []);
+
+  const sendMessages = useCallback(() => {
+    messageQueue.current.splice(0).forEach((message) => {
+      websocket.current?.send(message);
     });
   }, []);
 
   const onopen: WebSocket['onopen'] = useCallback(
-    (event: Event) => {
+    (event: WebSocketEventMap['open']) => {
       resetRetryCount();
       setWebSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
-      sendSubscriptions();
+      // Send the subscriptions on reopening the connection only
+      if (!messageQueue.current.length) sendSubscriptions();
+      // Send the messages in the queue
+      sendMessages();
 
       return onOpen?.(event);
     },
@@ -149,17 +221,15 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
   );
 
   const onmessage: WebSocket['onmessage'] = useCallback(
-    (event: MessageEvent) => {
-      setWebSocketState((old) => ({ ...old, lastData: event.data }));
+    (event: WebSocketEventMap['message']) => {
       console.log('useWebSocket - onmessage - event', event);
       let { data } = event;
       try {
-        if (typeof data !== 'string') {
-          data = JSON.parse(data);
-        }
+        data = JSON.parse(data);
       } catch (e) {
-        console.error('useWebSocket - onmessage - JSON PARSE error', e);
+        // do nothing
       }
+      setWebSocketState((old) => ({ ...old, lastData: data }));
       onMessage?.(event, data);
     },
     [onMessage]
@@ -178,51 +248,55 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
   }, [connect, maxRetries]);
 
   const onclose: WebSocket['onclose'] = useCallback(
-    (event: CloseEvent) => {
+    (event: WebSocketEventMap['close']) => {
       setWebSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
       onClose?.(event);
 
       /**
-       * Connection Closed; try to reconnect when reconnect is true
-       *
-       * 1000: Normal Closure. This means that the connection was closed, or is being closed, without any error.
-       * 1005: No Status Received: also sometimes gets send back
-       *
-       * I dont feel like we can rely on status codes here so we just check if we should reconnect manually.
-       *
-       * @see https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+       * Connection Closed; try to connect again when shouldReconnectOnClose is true and shouldReconnect is set to true
+       * A manual close will set shouldReconnect to false, it will not reconnect.
        */
-
-      if (retryCount.current >= maxRetries || !reconnect.current) {
-        return;
+      if (shouldReconnectOnClose?.(event)) {
+        if (retryCount.current >= maxRetries || !shouldReconnect.current) {
+          return;
+        }
+        retry();
       }
-      retry();
-      onClose?.(event);
     },
     [maxRetries, onClose, retry]
   );
 
   const onerror: WebSocket['onerror'] = useCallback(
-    (event: Event) => {
+    (event: WebSocketEventMap['error']) => {
       setWebSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
+
+      // Retry connecting on error
+      if (shouldRetryOnError) {
+        if (retryCount.current >= maxRetries || !shouldReconnect.current) {
+          return;
+        }
+        retry();
+      }
       onError?.(event);
     },
     [onError]
   );
 
   const sendData = useCallback(
-    (name: string, message: J) => {
+    (
+      message: J,
+      props?: { shouldQueue?: boolean; shouldResendOnReconnect?: boolean }
+    ) => {
+      const { shouldQueue, shouldResendOnReconnect } = props || {};
       // Add the subscription to the list
-      subscribe(name, message);
-      console.log('subscribe', name, message);
+      if (shouldResendOnReconnect) subscribe(message);
 
       // Send the message directly if the connection is already open
       if (websocket.current?.readyState === WebSocket.OPEN) {
         websocket.current.send(JSON.stringify(message));
-        console.log('sendData - open ', name, message);
-      } else {
-        console.log('sendData - not open yet', name, message);
-        // JSON.stringify(message);
+      } else if (shouldQueue) {
+        // Add the message to the queue if the connection is not open yet
+        messageQueue.current.push(JSON.stringify(message));
       }
     },
     [subscribe]
@@ -232,7 +306,7 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
    * Close the websocket connection; do not reconnect
    */
   const close = useCallback((code?: number, reason?: string) => {
-    reconnect.current = false;
+    shouldReconnect.current = false;
     websocket.current?.close(code, reason);
   }, []);
 
@@ -248,9 +322,9 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
         close(1000);
         onTabLeave?.(websocket.current?.readyState);
       } else {
-        // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
+        // Connection Closing but not closed yet; just set shouldReconnect to true so it will reconnect on close.
         if (websocket.current?.readyState === WebSocket.CLOSING) {
-          reconnect.current = true;
+          shouldReconnect.current = true;
           setWebSocketState((old) => ({
             ...old,
             readyState: WebSocket.CLOSING,
@@ -292,12 +366,12 @@ const useWebSocket: <T extends WebSocketJSONType, J extends WebSocketJSONType>(
   useEffect(() => {
     if (shouldConnect) {
       connect();
-
-      return () => {
-        close(1000, 'Disconnecting Socket on unmount!');
-      };
     }
-    return undefined;
+    return () => {
+      if (disconnectOnUnmount.current) {
+        close(1000, 'Disconnecting Socket on unmount!');
+      }
+    };
   }, [close, connect, shouldConnect]);
 
   return useMemo(

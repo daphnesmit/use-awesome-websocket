@@ -5,8 +5,9 @@ module.exports = {
     jest: true,
   },
   extends: [
-    'plugin:react/recommended',
     'airbnb',
+    'plugin:react/recommended',
+    'plugin:react/jsx-runtime',
     'prettier',
     'plugin:storybook/recommended',
   ],
@@ -38,6 +39,7 @@ module.exports = {
     'no-unused-vars': 'off',
     'no-use-before-define': 'off',
     'no-shadow': 'off',
+    'no-undef': 'off',
     '@typescript-eslint/no-shadow': 'warn',
     'prettier/prettier': 'error',
     'react/destructuring-assignment': 'off',

@@ -5,7 +5,7 @@ React hook to integrate WebSockets into your React Components.
 ## 🏃 Getting started
 
 The following command will install the dependencies.
-Then it will run a watcher to watch the files, open storybook and also run the tests.
+After that it will run a watcher to watch the files, open storybook and also run the tests.
 
 ```
 npm i && npm dev
