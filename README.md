@@ -8,7 +8,7 @@ Pull requests welcomed!
 
 ````sh
 npm install --save @daphnesmit/use-websocket
-``
+```
 //or
 ```sh
 yarn add @daphnesmit/use-websocket
