@@ -26,7 +26,7 @@ yarn add @daphnesmit/use-websocket
 It wraps the child components with a context provider, allowing them to access the socket connection via the `useWebSocket` hook.
 It takes two props in the interface:
 
-```ts
+```tsx
 export interface WebSocketProviderProps {
   /**
    * If you want disconnect all sockets on unmount you can set it via the provider
@@ -42,7 +42,7 @@ export interface WebSocketProviderProps {
 
 Here's an example of how to use it:
 
-```jsx
+```tsx
 import { WebSocketProvider } from '@daphnesmit/use-websocket';
 
 function App() {
@@ -62,7 +62,7 @@ Please replace `<YourComponent />` with your actual component.
 `useWebsocket` is a custom React hook that allows you to interact with the WebSocket connection provided by `WebSocketProvider`.
 You can provide the following properties:
 
-```ts
+```tsx
 export interface UseWebSocketProps<
   ReturnedMessageType extends WebSocketJSONType,
 > extends WebSocketEvents<ReturnedMessageType> {
@@ -109,7 +109,7 @@ export interface UseWebSocketProps<
 
 And the hook returns the following interface:
 
-```ts
+```tsx
 export interface UseWebSocketReturn<
   ReturnedMessageType extends WebSocketJSONType,
   SendMessageType extends WebSocketJSONType,
