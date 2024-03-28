@@ -2,6 +2,8 @@
 
 React hook and provider to integrate WebSockets into your React Components.
 
+**[Live Demo](https://daphnesmit.github.io/use-websocket/)**
+
 Pull requests welcomed!
 
 ## Installation
