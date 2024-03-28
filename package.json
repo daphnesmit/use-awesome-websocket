@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "author": "Daphne Smit",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "react",
     "websocket",
