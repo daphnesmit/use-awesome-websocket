@@ -9,7 +9,7 @@ export default defineConfig({
     setupFiles: './tests/setup.js',
     passWithNoTests: true,
     coverage: {
-      include: ['{src,tests}/**/*'],
+      include: ['{src,tests}/**/*', '!src/stories'],
     },
   },
 });
