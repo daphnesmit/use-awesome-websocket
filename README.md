@@ -2,20 +2,20 @@
 
 React hook and provider to integrate WebSockets into your React Components.
 
-**[Live Demo](https://daphnesmit.github.io/use-websocket/)**
+**[Live Demo](https://daphnesmit.github.io/use-awesome-websocket/)**
 
 Pull requests welcomed!
 
 ## Installation
 
 ```sh
-npm install --save @daphnesmit/use-websocket
+npm install --save use-awesome-websocket
 ```
 
 or
 
 ```sh
-yarn add @daphnesmit/use-websocket
+yarn add use-awesome-websocket
 ```
 
 ## Usage
@@ -43,7 +43,7 @@ export interface WebSocketProviderProps {
 Here's an example of how to use it:
 
 ```tsx
-import { WebSocketProvider } from '@daphnesmit/use-websocket';
+import { WebSocketProvider } from 'use-awesome-websocket';
 
 function App() {
   return (
@@ -133,7 +133,7 @@ export interface UseWebSocketReturn<
 Here's an example of how to use it:
 
 ```jsx
-import { useWebsocket } from '@daphnesmit/use-websocket';
+import { useWebsocket } from 'use-awesome-websocket';
 
 function YourComponent() {
   const { readyState, sendData, lastData } = useWebSocket<string, string>({

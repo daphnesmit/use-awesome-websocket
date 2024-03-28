@@ -29,7 +29,7 @@ const WebSocketProvider: FC<PropsWithChildren<WebSocketProviderProps>> = ({
    *
    * @example
    * ```tsx
-   * import { WebSocketProvider } from '@daphnesmit/use-websocket';
+   * import { WebSocketProvider } from 'use-awesome-websocket';
    *
    * function App() {
    *   return (

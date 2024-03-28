@@ -1,5 +1,5 @@
 {
-  "name": "@daphnesmit/use-websocket",
+  "name": "use-awesome-websocket",
   "description": "React hook and provider to integrate WebSockets into your React Components",
   "version": "0.0.0",
   "author": "Daphne Smit",
@@ -7,13 +7,12 @@
   "keywords": [
     "react",
     "websocket",
-    "use-websocket",
     "react-hook",
     "react-provider"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/daphnesmit/use-websocket"
+    "url": "https://github.com/daphnesmit/use-awesome-websocket"
   },
   "scripts": {
     "dev": "concurrently \"npm run build --watch\" \"npm run storybook\" \"npm run test\" ",

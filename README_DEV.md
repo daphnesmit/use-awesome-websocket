@@ -71,7 +71,7 @@ Often times you want to `link` this package to another project when developing l
 In a project where you want to consume your package run:
 
 ```console
-npm link @daphnesmit/use-websocket
+npm link @daphnesmit/use-awesome-websocket
 ```
 
 Learn more about package linking [here](https://docs.npmjs.com/cli/v8/commands/npm-link).
