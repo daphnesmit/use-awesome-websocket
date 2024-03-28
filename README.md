@@ -20,11 +20,21 @@ yarn add @daphnesmit/use-websocket
 
 `WebSocketProvider` is a React component that provides a WebSocket connection to your entire React application.
 It wraps the child components with a context provider, allowing them to access the socket connection via the `useWebSocket` hook.
-It takes two props:
+It takes two props in the interface:
 
-- `url?: string`: If you want to set a default URL for the WebSocket connection, you can set it via the provider.
-- `disconnectOnUnmount?: boolean`: If you want to disconnect all sockets on unmount, you can set it via the provider (default: true).
-- `children`: The child components that will have access to the WebSocket connection.
+```ts
+export interface WebSocketProviderProps {
+  /**
+   * If you want disconnect all sockets on unmount you can set it via the provider
+   * @default true
+   */
+  disconnectOnUnmount?: boolean;
+  /**
+   * If you want to set a default url for the websocket connection you can set it via the provider
+   */
+  url?: string;
+}
+```
 
 Here's an example of how to use it:
 
