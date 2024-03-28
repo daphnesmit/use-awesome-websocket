@@ -1,111 +1,184 @@
 # useWebsocket
 
-React hook to integrate WebSockets into your React Components.
+React hook and provider to integrate WebSockets into your React Components.
 
-## 🏃 Getting started
+Pull requests welcomed!
 
-The following command will install the dependencies.
-After that it will run a watcher to watch the files, open storybook and also run the tests.
+## Installation
 
-```
-npm i && npm dev
-```
-
-## What's included?
-
-- ⚡️[tsup](https://github.com/egoist/tsup) - The simplest and fastest way to bundle your TypeScript libraries. Used to bundle package as ESM and CJS modules. Supports TypeScript, Code Splitting, PostCSS, and more out of the box.
-- 📖 [Storybook](https://storybook.js.org/) - Build UI components and pages in isolation. It streamlines UI development, testing, and documentation.
-- 🧪 [Vitest](https://vitest.dev/) - A testing framework for JavaScript. Preconfigured to work with TypeScript and JSX.
-- 🔼 [Release-it](https://github.com/release-it/release-it/) - release-it is a command line tool to automatically generate a new GitHub Release and populates it with the changes (commits) made since the last release.
-- 🐙 [Test & Publish via Github Actions](https://docs.github.com/en/actions) - CI/CD workflows for your package. Run tests on every commit plus integrate with Github Releases to automate publishing package to NPM and Storybook to Github Pages.
-- 📄 [Commitizen](https://github.com/commitizen/cz-cli) — When you commit with Commitizen, you'll be prompted to fill out any required commit fields at commit time.
-- 🐶 [Husky](https://github.com/typicode/husky) — Run scripts before committing.
-- 🚫 [lint-staged](https://github.com/okonet/lint-staged) — Run linters on git staged files
-- 🤖 [Dependabot](https://docs.github.com/en/code-security/dependabot) - Github powered dependency update tool that fits into your workflows. Configured to periodically check your dependencies for updates and send automated pull requests.
-- ☑️ [ESLint](https://eslint.org/) - A linter for JavaScript. Includes a simple configuration for React projects based on the recommended ESLint and AirBnB configs.
-- 🎨 [Prettier](https://prettier.io/) - An opinionated code formatter.
-- 🏃‍♀️‍➡️ [TSX](https://github.com/privatenumber/tsx) - Execute TypeScript files with zero-config in a Node.js environment.
+````sh
+npm install --save @daphnesmit/use-websocket
+``
+//or
+```sh
+yarn add @daphnesmit/use-websocket
+````
 
 ## Usage
 
-### 💻 Developing
+### WebSocketProvider
 
-Watch and rebuild code with `tsup` and runs Storybook to preview your UI during development.
+`WebSocketProvider` is a React component that provides a WebSocket connection to your entire React application.
+It wraps the child components with a context provider, allowing them to access the socket connection via the `useWebSocket` hook.
+It takes two props:
 
-```console
-npm dev
+- `url?: string`: If you want to set a default URL for the WebSocket connection, you can set it via the provider.
+- `disconnectOnUnmount?: boolean`: If you want to disconnect all sockets on unmount, you can set it via the provider (default: true).
+- `children`: The child components that will have access to the WebSocket connection.
+
+Here's an example of how to use it:
+
+```jsx
+import { WebSocketProvider } from '@daphnesmit/use-websocket';
+
+function App() {
+  return (
+    <WebSocketProvider url="wss://your-websocket-url">
+      <YourComponent />
+    </WebSocketProvider>
+  );
+}
 ```
 
-Run all tests and watch for changes
+Please replace `wss://your-websocket-url` with your actual ws url.
+Please replace `<YourComponent />` with your actual component.
 
-```console
-npm test
+### useWebsocket
+
+`useWebsocket` is a custom React hook that allows you to interact with the WebSocket connection provided by `WebSocketProvider`.
+You can provide the following properties:
+
+```ts
+export interface UseWebSocketProps<
+  ReturnedMessageType extends WebSocketJSONType,
+> extends WebSocketEvents<ReturnedMessageType> {
+  /**
+   * Disconnect the websocket connection on unmount
+   * @default true
+   */
+  disconnectOnUnmount?: boolean;
+  /**
+   * The endpoint to connect to, comes after the url. eg: wss://example.com/endpoint
+   */
+  endpoint?: string;
+  /**
+   * Maximum number of retries to connect
+   * @default 5
+   */
+  maxRetries?: number;
+  /**
+   * Interval to reconnect in milliseconds
+   * @default 1000
+   */
+  reconnectInterval?: number;
+  /**
+   * Determine if it should connect to the websocket server on mount
+   * @default true
+   */
+  shouldConnect?: boolean;
+  /**
+   * Determine if it should reconnect on close events, such as server shutting down
+   * @default () => true
+   */
+  shouldReconnectOnClose?: (closeEvent: WebSocketEventMap['close']) => boolean;
+  /**
+   * Retry connecting on error
+   * @default false
+   */
+  shouldRetryOnError?: boolean;
+  /**
+   * URL to connect to
+   */
+  url?: string;
+}
 ```
 
-### 🏗️ Building
+And the hook returns the following interface:
 
-Build package with `tsup` for production.
+```ts
+export interface UseWebSocketReturn<
+  ReturnedMessageType extends WebSocketJSONType,
+  SendMessageType extends WebSocketJSONType,
+> extends WebSocketState<ReturnedMessageType> {
+  connect: () => WebSocket;
+  /**
+   * Send data to the websocket server:
+   * - If the connection is open, send the data directly
+   * - If the connection is not open yet, add the data to the messages queue when shouldQueue is true and send the data when the connection is opened.
+   * - If the connection is closed, resend the data when the connection is reopened when shouldResendOnReconnect is true
+   */
+  sendData: (
+    data: SendMessageType,
+    options?: { shouldQueue?: boolean; shouldResendOnReconnect?: boolean }
+  ) => void;
 
-```console
-npm build
+  websocket: WebSocket;
+}
 ```
 
-### ▶️ Running files written in TypeScript
+Here's an example of how to use it:
 
-To execute a file written in TypeScript inside a Node.js environment, use the `tsx` command. This will detect your `tsconfig.json` and run the file with the correct configuration. This is perfect for running custom scripts while remaining type-safe.
+```jsx
+import { useWebsocket } from '@daphnesmit/use-websocket';
 
-```console
-npm tsx ./path/to/file.ts
+function YourComponent() {
+  const { readyState, sendData, lastData } = useWebSocket<string, string>({
+    url: 'wss://your-websocket-url',
+  });
+  const [messageHistory, setMessageHistory] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (lastData) {
+      setMessageHistory((prev) => [...prev, lastData]);
+    }
+  }, [lastData]);
+
+  useEffect(() => {
+    sendData('First Message on effect!', {
+      shouldQueue: true,
+      shouldResendOnReconnect: true,
+    });
+  }, []);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() =>
+          sendData('Hello', {
+            shouldResendOnReconnect: true,
+          })
+        }
+        disabled={readyState !== WEBSOCKET_READY_STATE.OPEN}
+      >
+        Click to send &apos;Hello&apos;
+      </button>
+      <button
+        type="button"
+        onClick={() => sendData('Bye')}
+        disabled={readyState !== WEBSOCKET_READY_STATE.OPEN}
+      >
+        Click to send &apos;Bye&apos;
+      </button>
+      <p>
+        The WebSocket ready state is:{' '}
+        <strong>{connectionMap[readyState]}</strong>
+      </p>
+      <h3>Last data </h3>
+      {lastData ? <p>Last message: {lastData}</p> : null}
+      <h3>Message history</h3>
+      <ul>
+        {messageHistory.map((message, index) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <li key={index}>{message || null}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 ```
 
-This is useful for running scripts, starting a server, or any other code you want to run while remaining type-safe.
+## Requirements
 
-### 🖇️ Linking
-
-Often times you want to `link` this package to another project when developing locally, circumventing the need to publish to NPM to consume it.
-
-In a project where you want to consume your package run:
-
-```console
-npm link @daphnesmit/use-websocket
-```
-
-Learn more about package linking [here](https://docs.npmjs.com/cli/v8/commands/npm-link).
-
-### 📩 Committing
-
-When you are ready to commit simply run the following command to get a well formatted commit message. All staged files will automatically be linted and fixed as well.
-
-```console
-npm commit
-```
-
-### 🔖 Releasing, tagging & publishing to NPM
-
-Create a semantic version tag and publish to Github Releases. When a new release is detected a Github Action will automatically build the package and publish it to NPM. Additionally, a Storybook will be published to Github pages.
-
-Learn more about how to use the `release-it` command [here](https://github.com/release-it/release-it).
-
-```console
-npm release
-```
-
-When you are ready to publish to NPM simply run the following command:
-
-```console
-npm publish
-```
-
-#### 🤖 Auto publish after Github Release (or manually by dispatching the Publish workflow)
-
-❗Important note: in order to automatically publish a Storybook on Github Pages you need to open your repository settings, navigate to "Actions" and enable **"Read & write permissions"** for Workflows. Then navigate to "Pages" and choose **"GitHub Actions"** as the source for the Build and Deployment. After a successful deployment you can find your Storybook at `https://<your-github-username>.github.io/<your-repository-name>/`.
-
-❗Important note: in order to publish package to NPM you must add your token as a Github Action secret. Learn more on how to configure your repository and publish packages through Github Actions [here](https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages).
-
-## 🎨 CSS & PostCSS
-
-Import CSS files works out of the box. Simply import your CSS files in your components and they will be bundled with your package.
-
-[tsup](https://github.com/egoist/tsup) supports PostCSS out of the box. Simply run `npm add postcss -D` add a `postcss.config.js` file to the root of your project, then add any plugins you need. Learn more how to configure PostCSS [here](https://tsup.egoist.dev/#css-support).
-
-Additionally consider using the [tsup](https://github.com/egoist/tsup) configuration option `injectStyle` to inject the CSS directly into your Javascript bundle instead of outputting a separate CSS file.
+- React >=17
+- Cannot be used within a class component (must be a functional component that supports React Hooks)

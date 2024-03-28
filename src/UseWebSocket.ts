@@ -46,9 +46,9 @@ interface WebSocketState<T extends WebSocketJSONType> {
 }
 
 export interface UseWebSocketReturn<
-  T extends WebSocketJSONType,
-  J extends WebSocketJSONType,
-> extends WebSocketState<T> {
+  ReturnedMessageType extends WebSocketJSONType,
+  SendMessageType extends WebSocketJSONType,
+> extends WebSocketState<ReturnedMessageType> {
   connect: () => WebSocket;
   /**
    * Send data to the websocket server:
@@ -57,15 +57,16 @@ export interface UseWebSocketReturn<
    * - If the connection is closed, resend the data when the connection is reopened when shouldResendOnReconnect is true
    */
   sendData: (
-    data: J,
+    data: SendMessageType,
     options?: { shouldQueue?: boolean; shouldResendOnReconnect?: boolean }
   ) => void;
 
   websocket: WebSocket;
 }
 
-export interface UseWebSocketProps<T extends WebSocketJSONType>
-  extends WebSocketEvents<T> {
+export interface UseWebSocketProps<
+  ReturnedMessageType extends WebSocketJSONType,
+> extends WebSocketEvents<ReturnedMessageType> {
   /**
    * Disconnect the websocket connection on unmount
    * @default true
@@ -222,12 +223,11 @@ const useWebSocket: <
 
   const onmessage: WebSocket['onmessage'] = useCallback(
     (event: WebSocketEventMap['message']) => {
-      console.log('useWebSocket - onmessage - event', event);
       let { data } = event;
       try {
         data = JSON.parse(data);
       } catch (e) {
-        // do nothing
+        // do nothing and keep the original data
       }
       setWebSocketState((old) => ({ ...old, lastData: data }));
       onMessage?.(event, data);
@@ -237,10 +237,6 @@ const useWebSocket: <
 
   const retry = useCallback(() => {
     setTimeout(() => {
-      console.warn('Reconnecting...', {
-        maxRetries,
-        retryCount: retryCount.current,
-      });
       retryCount.current += 1;
 
       connect();
