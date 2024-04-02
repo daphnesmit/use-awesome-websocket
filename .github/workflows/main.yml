@@ -7,7 +7,7 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    name: Run Type Check & Linters
+    name: Build, test & deploy
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -16,6 +16,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
@@ -35,9 +40,19 @@ jobs:
       - name: Build package
         run: npm run build
 
-      - name: Archive build artifacts
+      - name: Deploy Storybook
         if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v3
+        uses: bitovi/github-actions-storybook-to-github-pages@v1.0.2
         with:
-          name: dist
-          path: dist
+          install_command: npm ci
+          build_command: npm run build-storybook
+          path: storybook-static
+        env:
+          GH_TOKEN: ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release
+        if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
