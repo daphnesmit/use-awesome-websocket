@@ -135,6 +135,15 @@ Here's an example of how to use it:
 ```jsx
 import { useWebsocket, WEBSOCKET_READY_STATE } from 'use-awesome-websocket';
 
+
+const connectionMap = {
+  [WEBSOCKET_READY_STATE.CONNECTING]: 'Connecting',
+  [WEBSOCKET_READY_STATE.OPEN]: 'Open',
+  [WEBSOCKET_READY_STATE.CLOSING]: 'Closing',
+  [WEBSOCKET_READY_STATE.CLOSED]: 'Closed',
+  [WEBSOCKET_READY_STATE.UNINSTANTIATED]: 'Uninstantiated',
+};
+
 function YourComponent() {
   const { readyState, sendData, lastData } = useWebSocket<string, string>({
     url: 'wss://your-websocket-url',
