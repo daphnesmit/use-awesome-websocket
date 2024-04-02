@@ -2,6 +2,13 @@ name: Main
 
 on: [push]
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+  issues: write
+
 jobs:
   run-ci:
     env:
