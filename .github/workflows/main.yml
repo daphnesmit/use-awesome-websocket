@@ -47,6 +47,13 @@ jobs:
       - name: Build package
         run: npm run build
 
+      - name: Archive build artifacts
+        if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || github.ref == 'refs/heads/next'
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
+
       - name: Deploy Storybook
         if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
         uses: bitovi/github-actions-storybook-to-github-pages@v1.0.2
@@ -57,9 +64,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist
+
       - name: Release
         if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release
+        run: npx semantic-release --ci

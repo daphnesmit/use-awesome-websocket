@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/daphnesmit/use-awesome-websocket"
+    "url": "git+https://github.com/daphnesmit/use-awesome-websocket.git"
   },
   "scripts": {
     "dev": "concurrently \"npm run build --watch\" \"npm run storybook\" \"npm run test\" ",
