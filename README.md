@@ -133,7 +133,7 @@ export interface UseWebSocketReturn<
 Here's an example of how to use it:
 
 ```jsx
-import { useWebsocket } from 'use-awesome-websocket';
+import { useWebsocket, WEBSOCKET_READY_STATE } from 'use-awesome-websocket';
 
 function YourComponent() {
   const { readyState, sendData, lastData } = useWebSocket<string, string>({

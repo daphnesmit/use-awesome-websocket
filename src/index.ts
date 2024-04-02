@@ -8,4 +8,5 @@ export type {
   WebSocketOnOpenFunc,
   UseWebSocketReturn,
   UseWebSocketProps,
+  WEBSOCKET_READY_STATE,
 } from './UseWebSocket';
